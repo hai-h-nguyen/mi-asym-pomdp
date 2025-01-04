@@ -1,0 +1,22 @@
+- Train repr as usual
+```python3 main_pretrain_representations_cv_mim.py --data_path HeavenHell-v0_s42_3000ep.data --config_env configs/envs/heaven_hell_v0.py --config_repr configs/repr/heaven_hell_cv_mim.py --num_epochs 1000```
+
+- Test direct_phi (normal bottom)
+```python3 main.py --config_env configs/envs/heaven_hell_v0.py --config_rl configs/rl/dqn_direct_phi_normal_bottom_default.py --train_episodes 2000 --seed 0 --cuda 0 --state_embedder_dir pretrained_encoders/HeavenHell-v0/s_encoder.pt --group zeros_off```
+
+- Test direct_phi (zero-bottom)
+```python3 main.py --config_env configs/envs/heaven_hell_v0.py --config_rl configs/rl/dqn_direct_phi_zero_bottom_default.py --train_episodes 2000 --seed 0 --cuda 0 --state_embedder_dir pretrained_encoders/HeavenHell-v0/s_encoder.pt --group zeros_on```
+
+- Test direct_phi with image observation, need to specify --config_seq config/seq_models/gru_cnn.py (or gpt_cnn.py)
+
+
+
+## HeavenHell-v0
+- lr 3e-4, loss_w = 0.5, reward_w = 10
+
+## Test zero-on/off for robot domains
+python3 main.py --config_env configs/envs/block_pulling.py --config_rl configs/rl/sac_zero_on_default.py --train_episodes 800 --seed 0 --cuda 0 --group zero_on --config_seq configs/seq_models/mlp_robot_cnn_default.py --config_repr configs/repr/block_pulling_long.py --updates_per_step 1.0 --state_embedder_dir pretrained_encoders/BlockPulling-v0/ex/s_encoder.pt --obs_embedder_dir pretrained_encoders/BlockPulling-v0/ex/o_encoder.pt --start_expert_training 80
+python3 main.py --config_env configs/envs/block_pulling.py --config_rl configs/rl/sac_zero_off_default.py --train_episodes 800 --seed 0 --cuda 0 --group zero_on --config_seq configs/seq_models/mlp_robot_cnn_default.py --config_repr configs/repr/block_pulling_long.py --updates_per_step 1.0 --state_embedder_dir pretrained_encoders/BlockPulling-v0/ex/s_encoder.pt --obs_embedder_dir pretrained_encoders/BlockPulling-v0/ex/o_encoder.pt --start_expert_training 80
+
+## Test zero-on/off for discrete action domains (updates_per_step, batch_size needs to be tuned)
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_zero_on_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zero_on --config_seq configs/seq_models/mlp_default.py --config_repr configs/repr/carflag_1d.py --state_embedder_dir pretrained_encoders/CarFlag-1D/1353/s_encoder.pt --obs_embedder_dir pretrained_encoders/CarFlag-1D/1353/o_encoder.pt --batch_size 256 --updates_per_step 1.0

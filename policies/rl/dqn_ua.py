@@ -1,0 +1,132 @@
+import torch
+from .base import RLAlgorithmBase
+from torchkit.networks import FlattenMlp
+import torch.nn.functional as F
+import torchkit.pytorch_utils as ptu
+from utils.helpers import LinearSchedule as linear_schedule
+
+
+class DQN_UA(RLAlgorithmBase):
+    """A version of asymmetric DQN that uses DDQN instead of pure DQN
+
+    Args:
+        RLAlgorithmBase (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    name = "dqn-ua"
+    continuous_action = False
+
+    def __init__(self, init_eps=1.0, end_eps=0.01, schedule_steps=1000, **kwargs):
+        self.epsilon_schedule = linear_schedule(
+            init_value=init_eps,
+            end_value=end_eps,
+            transition_steps=schedule_steps,
+        )
+        self.count = 0
+
+    def get_special_dict(self):
+        dict = {}
+        dict["count"] = self.count
+        dict["torch_rng_state"] = torch.get_rng_state()
+        dict["torch_cuda_rng_state"] = torch.cuda.get_rng_state()
+        return dict
+
+    def load_special_dict(self, dict):
+        self.count = dict["count"]
+        torch.set_rng_state(dict["torch_rng_state"])
+        torch.cuda.set_rng_state(dict["torch_cuda_rng_state"])
+
+    @staticmethod
+    def build_critic(hidden_sizes, input_size=None, obs_dim=None, action_dim=None):
+        if obs_dim is not None and action_dim is not None:
+            input_size = obs_dim + action_dim
+        qf = FlattenMlp(
+            input_size=input_size, output_size=action_dim, hidden_sizes=hidden_sizes
+        )
+        return qf
+
+    def select_action(self, qf, observ, deterministic: bool):
+        action_logits = qf(observ)  # (B=1, A)
+        if deterministic:
+            action = torch.argmax(action_logits, dim=-1)  # (*)
+        else:
+            random_action = torch.randint(
+                high=action_logits.shape[-1], size=action_logits.shape[:-1]
+            ).to(
+                ptu.device
+            )  # (*)
+            optimal_action = torch.argmax(action_logits, dim=-1)  # (*)
+
+            eps = self.epsilon_schedule.value(self.count)
+            # mask = 0 means 1-eps exploit; mask = 1 means eps explore
+            mask = torch.multinomial(
+                input=ptu.FloatTensor([1 - eps, eps]),
+                num_samples=action_logits.shape[0],
+                replacement=True,
+            )  # (*)
+            action = mask * random_action + (1 - mask) * optimal_action
+
+            self.count += 1
+            # print(eps, self.count, random_action, optimal_action, action)
+
+        # convert to one-hot vectors
+        action = F.one_hot(
+            action.long(), num_classes=action_logits.shape[-1]
+        ).float()  # (*, A)
+        return action
+
+    def critic_loss(
+        self,
+        markov_critic: bool,
+        critic,
+        critic_target,
+        observs,
+        actions,
+        rewards,
+        dones,
+        gamma,
+        states,
+        next_observs=None,  # used in markov_critic
+    ):
+
+        # Q^tar(h(t+1), pi(h(t+1))) + H[pi(h(t+1))]
+        with torch.no_grad():
+            next_target_vh, next_target_vhz = critic_target(
+                prev_actions=actions,
+                rewards=rewards,
+                observs=observs,
+                states=states,
+                current_actions=None,
+            )  # (T+1, B, A)
+
+            next_actions = torch.argmax(next_target_vh, dim=-1, keepdim=True)  # (*, 1)
+            next_target_qhz = next_target_vhz.gather(dim=-1, index=next_actions)  # (*, 1)
+
+            # q_target: (T, B, 1)
+            qhz_target = rewards + (1.0 - dones) * gamma * next_target_qhz  # next q
+            qhz_target = qhz_target[1:]  # (T, B, 1)
+            qh_target = next_target_vhz[1:]  # (T, B, 1)
+
+        # Q(h(t), a(t)) (T, B, 1)
+        vh_pred, vhz_pred = critic(
+            prev_actions=actions[:-1],
+            rewards=rewards[:-1],
+            observs=observs[:-1],
+            states=states[:-1],
+            current_actions=None,
+        )  # (T, B, A)
+
+        stored_actions = actions[1:]  # (T, B, A)
+        stored_actions = torch.argmax(
+            stored_actions, dim=-1, keepdim=True
+        )  # (T, B, 1)
+        qh_pred = vh_pred.gather(
+            dim=-1, index=stored_actions
+        )  # (T, B, A) -> (T, B, 1)
+        qhz_pred = vhz_pred.gather(
+            dim=-1, index=stored_actions
+        )  # (T, B, A) -> (T, B, 1)
+
+        return (qh_pred, qh_target), (qhz_pred, qhz_target)

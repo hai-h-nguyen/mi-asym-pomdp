@@ -1,0 +1,33 @@
+
+# ZP-DRQN, ZP-DTQN, ZP-RSAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-dtqn --config_seq configs/seq_models/gpt_default.py
+
+python3 main.py --config_env configs/envs/carflag_1d_cont.py --config_rl configs/rl/sac_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_1d_cont.py --config_rl configs/rl/sac_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-dtqn --config_seq configs/seq_models/gpt_default.py
+
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_cnn_default.py
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_zp_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-dtqn --config_seq configs/seq_models/gpt_cnn_default.py
+
+# DRQN, DTQN, RSAC, TSAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_1d_cont.py --config_rl configs/rl/sac_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_cnn_default.py
+
+# BA-DTQN, BA-TSAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_ba_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_1d_cont.py --config_rl configs/rl/sac_ba_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_ba_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_cnn_default.py
+
+# UA-DTQN, UA-TSAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_ua_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_1d_cont.py --config_rl configs/rl/sac_ua_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_ua_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_cnn_default.py
+
+# B-DQN, B-SAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_believer_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py
+
+# O-DTQN, O-TSAC
+python3 main.py --config_env configs/envs/carflag_1d.py --config_rl configs/rl/dqn_ours_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_default.py --config_repr configs/repr/carflag_1d.py --obs_embedder_dir pretrained_encoders/CarFlag-1D/1353/o_encoder.pt --state_embedder_dir pretrained_encoders/CarFlag-1D/1353/s_encoder.pt
+python3 main.py --config_env configs/envs/carflag_2d.py --config_rl configs/rl/dqn_ours_default.py --train_episodes 5000 --seed 0 --cuda 0 --group zp-drqn --config_seq configs/seq_models/gru_cnn_default.py --config_repr configs/repr/carflag_2d.py --obs_embedder_dir pretrained_encoders/CarFlag-2D/new/o_encoder.pt --state_embedder_dir pretrained_encoders/CarFlag-2D/new/s_encoder.pt
+
