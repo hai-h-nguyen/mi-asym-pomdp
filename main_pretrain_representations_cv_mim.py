@@ -11,7 +11,6 @@ import torch.nn.functional as F
 
 import wandb
 
-
 FLAGS = flags.FLAGS
 
 config_flags.DEFINE_config_file(
@@ -28,16 +27,15 @@ config_flags.DEFINE_config_file(
     lock_config=False,
 )
 
-
 flags.DEFINE_string("data_path", None, "Path to collected data.")
 flags.DEFINE_integer("num_epochs", 10, "# of training epochs (default 10).")
 flags.DEFINE_integer("seed", 0, "Random seed (default 0).")
 flags.DEFINE_integer("cuda", 0, "gpu id")
 flags.DEFINE_integer("log_freq", 50, "# of epochs to log file.")
+flags.DEFINE_boolean("wandb", False, "Whether to use wandb.")
 flags.DEFINE_string("wandb_name", None, "Name of wandb run.")
 flags.DEFINE_string("init_model", None, "Path to pretrained model to begin training from.")
 flags.mark_flags_as_required(["config_env", "config_repr", "data_path"])
-
 
 def main(argv):
     device = torch.device(f"cuda:{FLAGS.cuda}") if torch.cuda.is_available() else torch.device("cpu")
@@ -54,8 +52,10 @@ def main(argv):
     except:
         action_dim = env.action_space.n
 
-    wandb.login(key='ed44c646a708f75a7fe4e39aee3844f8bfe44858')
-    wandb.init(project="CV-MIM",
+    if FLAGS.wandb:
+        your_key = 'ed44c646a708f75a7fe4e39aee3844f8bfe44858'
+        wandb.login(key=your_key)
+        wandb.init(project="CV-MIM",
                settings=wandb.Settings(_disable_stats=True),
                group=f"{env_name}",
                name=f"s{FLAGS.seed}" if FLAGS.wandb_name is None else FLAGS.wandb_name,
@@ -88,19 +88,20 @@ def main(argv):
 
     for epoch in range(FLAGS.num_epochs):
         kvs = trainer.update()
-        for k, v in kvs.items():
-            for k2, v2 in v.items():
-                wandb.log({f"{k}/{k2}": v2}, step=epoch)
+        if FLAGS.wandb:
+            for k, v in kvs.items():
+                for k2, v2 in v.items():
+                    wandb.log({f"{k}/{k2}": v2}, step=epoch)
 
         if epoch % FLAGS.log_freq == 0:
-            file_dir = f"pretrained_encoders/{env_name}/s{FLAGS.seed}_end{epoch}_cv_mim_1"
+            file_dir = f"pretrained_encoders/{env_name}/s{FLAGS.seed}_end{epoch}_cv_mim"
             os.makedirs(file_dir, exist_ok=True)
-            trainer.save(file_dir, to_cloud=True)
+            trainer.save(file_dir, to_cloud=FLAGS.wandb)
             print(f'[INFO] Epoch: {epoch}, Saved model to {file_dir}')
 
-    file_dir = f"pretrained_encoders/{env_name}/s{FLAGS.seed}_end{epoch}_cv_mim_1"
+    file_dir = f"pretrained_encoders/{env_name}/s{FLAGS.seed}_end{epoch}_cv_mim"
     os.makedirs(file_dir, exist_ok=True)
-    trainer.save(file_dir, to_cloud=True)
+    trainer.save(file_dir, to_cloud=FLAGS.wandb)
     print(f'[INFO] Epoch: {epoch}, Saved model to {file_dir}')
 
 

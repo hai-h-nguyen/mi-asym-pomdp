@@ -148,7 +148,6 @@ class SimpleModelCNN(nn.Module):
         self.from_flattened = from_flattened
         self.embedding_size = output_dim
         self.channels = [img_shape[0]] + list(channels)
-
         self.blocks = nn.ModuleList()
         h_w = self.shape[-2:]
         for i in range(len(self.channels)-1):
@@ -309,6 +308,7 @@ class InfoDisentangle(nn.Module):
         self.dynamics_loss_s_weight = train_config.dynamics_loss_s_weight
         self.dynamics_loss_o_weight = train_config.dynamics_loss_o_weight
         self.reward_loss_weight = train_config.reward_loss_weight
+        self.representation_loss_s_weight = train_config.representation_loss_s_weight
         self.representation_loss_o_weight = train_config.representation_loss_o_weight
         self.disentangle_loss_weight = train_config.disentangle_loss_weight
 
@@ -326,6 +326,19 @@ class InfoDisentangle(nn.Module):
                                                 strides=train_config.strides,
                                                 pool=train_config.pool,
                                                 pool_size=train_config.pool_size)
+            if self.representation_loss_s_weight != 0:
+                self.subencoder_state = SimpleModelCNN(img_shape=self.env.img_size,
+                                                   output_dim=self.state_embedding_dim,
+                                                   channels=train_config.channels,
+                                                   kernel_size=train_config.kernel_sizes,
+                                                   strides=train_config.strides,
+                                                   pool=train_config.pool,
+                                                   pool_size=train_config.pool_size)
+                new_module_list = nn.ModuleList()
+                for name, block in self.subencoder_state.blocks.named_children():
+                    if name not in ["conv0"]:
+                        new_module_list.add_module(name, block)
+                self.subencoder_state.blocks = new_module_list
             
             self.encoder_obs = SimpleModelCNN(img_shape=self.env.img_size,
                                               output_dim=self.obs_embedding_dim,
@@ -367,7 +380,10 @@ class InfoDisentangle(nn.Module):
         self.inter_likelihood_estimator_global = CLUBSample(self.state_embedding_dim, self.obs_embedding_dim, self.obs_embedding_dim)
 
         self.act_embedding_dim = train_config.act_embedding_dim
-        self.act_embedding = nn.Linear(1, self.act_embedding_dim)
+        try:
+            self.act_embedding = nn.Linear(self.env.action_space.shape[0], self.act_embedding_dim)
+        except:
+            self.act_embedding = nn.Linear(1, self.act_embedding_dim)
         self.dynamics_model = nn.Sequential(nn.Linear(self.obs_embedding_dim + self.act_embedding_dim, hidden_dim),
                                             nn.ReLU(),
                                             nn.Linear(hidden_dim, hidden_dim),
@@ -380,8 +396,9 @@ class InfoDisentangle(nn.Module):
         self.get_optimizer(train_config.lr_encoder, train_config.lr_estimator)
 
     def get_optimizer(self, learning_rate_encoder, learning_rate_estimator):
+        optim_list =  list(self.encoder_state.parameters()) + list(self.subencoder_state.parameters()) if self.representation_loss_s_weight != 0 else list(self.encoder_state.parameters())
         self.encoder_optimizer = torch.optim.Adam(
-            list(self.encoder_state.parameters()) +
+            optim_list +
             list(self.encoder_obs.parameters()) +
             list(self.subencoder_obs.parameters()) +
             list(self.act_embedding.parameters()) +
@@ -419,9 +436,19 @@ class InfoDisentangle(nn.Module):
         """
         if self.use_cnn:
             states = self.preprocess(states, self.env.img_size)
-        encoder_outputs, _ = self.encoder_state(states)
+            encoder_outputs, encoder_activations = self.encoder_state(states)
+            if self.representation_loss_s_weight != 0:
+                subencoder_outputs, _ = self.subencoder_state(encoder_activations['conv0'])
+        else:
+            encoder_outputs, encoder_activations = self.encoder_state(states)
+            if self.representation_loss_s_weight != 0:
+                subencoder_outputs, _ = self.subencoder_state(encoder_activations['fc0'])
         encoder_outputs = encoder_outputs.unsqueeze(1)
-        return encoder_outputs
+        if self.representation_loss_s_weight != 0:
+            subencoder_outputs = subencoder_outputs.unsqueeze(1)
+            return encoder_outputs, subencoder_outputs
+        else:
+            return encoder_outputs, None
 
     def forward_obs(self, obs):
         """Computes a forward pass.
@@ -470,6 +497,7 @@ class InfoDisentangle(nn.Module):
             A dictionary for all losses.
         """
         log_encoder_loss = []
+        log_encoder_state_representation_loss = []
         log_encoder_obs_representation_loss = []
         log_encoder_disentangle_loss_inter = []
         log_encoder_state_dynamics_loss = []
@@ -484,13 +512,17 @@ class InfoDisentangle(nn.Module):
 
             sb = self.exps[inds]
             obs_indicator_matrix = self.gen_mask(sb.obs)
+            state_indicator_matrix = self.gen_mask(sb.state)
 
             self.encoder_optimizer.zero_grad()
             # Compute state embeddings, subencoder state embeddings, obs embeddings and subencoder obs embeddings
-            state_embeddings = self.forward_state(sb.state)
+            state_embeddings, subencoder_state_embeddings = self.forward_state(sb.state)
             obs_embeddings, subencoder_obs_embeddings = self.forward_obs(sb.obs)
 
             # Compute MI loss between (s; zo+zs) and (o, zo)
+            if self.representation_loss_s_weight != 0:
+                state_representation_loss = compute_fenchel_dual_loss(subencoder_state_embeddings, state_embeddings, 'JSD', state_indicator_matrix.to(sb.state.device))
+                encoder_total_loss += self.representation_loss_s_weight * state_representation_loss
             obs_representation_loss = compute_fenchel_dual_loss(subencoder_obs_embeddings, obs_embeddings, 'JSD', obs_indicator_matrix.to(sb.obs.device))
             encoder_total_loss += self.representation_loss_o_weight * obs_representation_loss
         
@@ -512,7 +544,7 @@ class InfoDisentangle(nn.Module):
             next_obs_preds = self.next_obs_model(dynamics_embeddings)
             reward_preds = self.reward_model(dynamics_embeddings)
 
-            next_state_targets = self.forward_state(sb.next_state)
+            next_state_targets = self.forward_state(sb.next_state)[0]
             next_state_targets = next_state_targets.squeeze(1)
 
             next_obs_targets = self.forward_obs(sb.next_obs)[0]
@@ -536,6 +568,8 @@ class InfoDisentangle(nn.Module):
             self.encoder_optimizer.step()
           
             log_encoder_loss.append(encoder_total_loss.item())
+            if self.representation_loss_s_weight != 0:
+                log_encoder_state_representation_loss.append(state_representation_loss.item())
             log_encoder_obs_representation_loss.append(obs_representation_loss.item())
             log_encoder_disentangle_loss_inter.append(inter_bound_global.item())
             log_encoder_state_dynamics_loss.append(state_dynamics_loss.item())
@@ -547,7 +581,7 @@ class InfoDisentangle(nn.Module):
                 self.inter_likelihood_estimator_global.train()
                 rand_id = np.random.randint(0, self.num_frames // self.batch_size)
                 sb_mi = self.exps[batch_data[rand_id]]
-                state_embeddings = self.forward_state(sb_mi.state)
+                state_embeddings = self.forward_state(sb_mi.state)[0]
                 state_embeddings = state_embeddings.squeeze(1)
                 obs_embeddings = self.forward_obs(sb_mi.obs)[0]
                 obs_embeddings = obs_embeddings.squeeze(1)
@@ -560,6 +594,7 @@ class InfoDisentangle(nn.Module):
 
         encoder_losses = dict(
             total_loss=np.mean(log_encoder_loss),
+            max_s_zs=np.mean(log_encoder_state_representation_loss),
             max_o_zo=np.mean(log_encoder_obs_representation_loss),
             min_zs_zo=np.mean(log_encoder_disentangle_loss_inter),
             state_dynamics_loss=np.mean(log_encoder_state_dynamics_loss),
@@ -592,7 +627,6 @@ class InfoDisentangle(nn.Module):
 
         indexes = np.arange(0, self.num_frames)
         indexes = np.random.permutation(indexes)
-
         self.batch_num += 1
 
         num_indexes = self.batch_size

@@ -57,3 +57,29 @@ def perturb(obs, next_obs, state, next_state, dxy,
     next_state[1] = affine_transform(next_state[1], np.linalg.inv(transform),
                                      mode='nearest', order=1)
     return obs, next_obs, state, next_state, rotated_dxy
+
+def perturb_1(obs, state, dxy, theta, trans, pivot,
+            set_theta_zero=False, set_trans_zero=False):
+    """Perturn an image for data augmentation"""
+
+    if set_theta_zero:
+        theta = 0.
+    if set_trans_zero:
+        trans = [0., 0.]
+    transform = get_image_transform(theta, trans, pivot)
+
+    rot = np.array([[np.cos(theta), -np.sin(theta)],
+                   [np.sin(theta), np.cos(theta)]])
+    rotated_dxy = rot.dot(dxy)
+    rotated_dxy = np.clip(rotated_dxy, -1, 1)
+
+    # Apply rigid transform to image and pixel labels.
+    obs[0] = affine_transform(obs[0], np.linalg.inv(transform),
+                              mode='nearest', order=1)
+    obs[1] = affine_transform(obs[1], np.linalg.inv(transform),
+                              mode='nearest', order=1)
+    state[0] = affine_transform(state[0], np.linalg.inv(transform),
+                                mode='nearest', order=1)
+    state[1] = affine_transform(state[1], np.linalg.inv(transform),
+                                mode='nearest', order=1)
+    return obs, state, rotated_dxy
