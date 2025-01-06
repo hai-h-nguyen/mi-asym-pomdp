@@ -16,16 +16,22 @@ cd mi-asym-pomdp
 conda create -n mi-asym-pomdp python=3.8
 conda activate mi-asym-pomdp
 ```
+3. Install PyTorch
+```bash
+pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+```
 
-3. Install the requirements
+4. Install the requirements
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Install PyTorch
+5. Install POMDP Domains
 ```bash
-pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+git clone https://github.com/twni2016/pomdp-baselines.git
+pip install -e .
 ```
+
 ## Domains
 
 ![View Paper](images/domains.png)

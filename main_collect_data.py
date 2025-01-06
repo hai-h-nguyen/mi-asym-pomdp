@@ -34,7 +34,6 @@ def main(argv):
     random_episodes = FLAGS.random_episodes
     planner_episodes = num_episodes - random_episodes
     aug = FLAGS.aug
-    assert aug == False
     n_aug = FLAGS.n_aug
     config_env = FLAGS.config_env
 
@@ -102,7 +101,6 @@ def main(argv):
             total_steps += 1
 
         if aug and episode >= random_episodes and planner_episodes > 0:
-            print("oooo")
             for ep_idx in range(n_aug):
                 theta, trans, pivot = get_random_transform_params(84)
                 obss[episode + int(((ep_idx + 1) * planner_episodes) / (n_aug + 1))] = obss[episode].clone()
