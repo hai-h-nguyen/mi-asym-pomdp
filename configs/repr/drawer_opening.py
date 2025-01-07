@@ -6,12 +6,12 @@ def get_config():
     # training specific
     config.lr_encoder = 1e-3
     config.lr_estimator = 1e-3
+    config.reward_loss_weight = 100.0
     config.dynamics_loss_s_weight = 1.0
     config.dynamics_loss_o_weight = 1.0
-    config.reward_loss_weight = 10.0
-    config.representation_loss_s_weight = 0.001
-    config.representation_loss_o_weight = 2.0
     config.disentangle_loss_weight = 1.0
+    config.representation_loss_s_weight = 0.001
+    config.representation_loss_o_weight = 1.0
 
     config.adam_eps = 1e-8
     config.batch_size = 500

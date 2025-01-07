@@ -29,7 +29,9 @@ pip install -r requirements.txt
 5. Install Robot Domains
 ```bash
 git clone -b mixed-obs-domains https://github.com/hai-h-nguyen/pomdp-domains.git
+cd pomdp-domains
 pip install -e .
+cd ..
 ```
 
 ## Domains

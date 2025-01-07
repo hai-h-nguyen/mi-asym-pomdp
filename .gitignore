@@ -13,7 +13,7 @@ logs/
 debug/
 wandb/
 pretrained_encoders/
-
+pomdp-domains/
 # slurm
 *.out 
 commands.yaml
