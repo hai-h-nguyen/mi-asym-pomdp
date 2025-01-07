@@ -26,9 +26,9 @@ pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --e
 pip install -r requirements.txt
 ```
 
-5. Install POMDP Domains
+5. Install Robot Domains
 ```bash
-git clone https://github.com/twni2016/pomdp-baselines.git
+git clone -b mixed-obs-domains https://github.com/hai-h-nguyen/pomdp-domains.git
 pip install -e .
 ```
 
@@ -40,7 +40,7 @@ pip install -e .
 ## 1. Collecting Offline Data for Learning Representations
 
 ### Parameters:
-- **env_name**: Name of the environment to collect data from. Possible values: `[sphinx, carflag_2d, heaven_hell, block_pulling, block_pushing, heaven_hell]`
+- **env_name**: Name of the environment to collect data from. Possible values: `GridWorld: [sphinx, carflag_2d, heaven_hell]; Robot: [block_pulling, block_pushing, heaven_hell]`
 - **episodes**: Number of episodes to collect data.
 - **random_episodes**: Number of random episodes to collect data.
 - **aug**: Whether to use data augmentation (applicable to the `Robot` domain).
@@ -59,7 +59,7 @@ python3 main_collect_data.py --config_env configs/envs/<env_name>.py --episodes 
 python3 main_collect_data.py --config_env configs/envs/<env_name>.py --episodes <episodes> --random_episodes <random_episodes> --aug --n_aug <n_aug>
 ```
 
-## 2. Learning Task-Relevant and Non-Overlapping State and Observation Features
+## 2. Learning State and Observation Features
 ### Parameters:
 - **data_path**: Path to the data file collected in the previous step.
 - **config_env**: Path to the environment configuration file. **configs/envs/<env_name>.py**
