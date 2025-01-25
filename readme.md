@@ -75,7 +75,7 @@ python3 main_collect_data.py --config_env configs/envs/<env_name>.py --episodes 
 - **init_model**: Path to the initial model checkpoint.
 
 ```bash
-python3 main_pretrain_representations_cv_mim.py --data_path <data_path> --config_env configs/envs/<env_name>.py --config_repr configs/repr/<env_name>.py --num_epochs <num_epochs> --seed <seed> --cuda <cuda> --log_freq <log_freq> --wandb --wandb_name <wandb_name> --init_model <init_model>
+python3 main_pretrain_representations.py --data_path <data_path> --config_env configs/envs/<env_name>.py --config_repr configs/repr/<env_name>.py --num_epochs <num_epochs> --seed <seed> --cuda <cuda> --log_freq <log_freq> --wandb --wandb_name <wandb_name> --init_model <init_model>
 ```
 ## 3. Learning a Policy
 ### Parameters:
@@ -87,6 +87,7 @@ python3 main_pretrain_representations_cv_mim.py --data_path <data_path> --config
 - **obs_embedder_dir**: Path to the directory containing the observation embedder model.
 - **group**: Wandb group name.
 - **train_episodes**: Number of training episodes.
+### Examples: See more at commands.yaml
 
 ```bash
 python3 main.py --config_env configs/envs/<env_name>.py --config_rl configs/rl/<rl_name>.py --config_seq configs/seq/<seq_name>.py --config_repr configs/repr/<repr_name>.py --state_embedder_dir <state_embedder_dir> --obs_embedder_dir <obs_embedder_dir> --group <group> --train_episodes <train_episodes>
